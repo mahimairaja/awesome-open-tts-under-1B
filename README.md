@@ -8,6 +8,8 @@
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](#contributing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
+**[Browse and filter the list →](https://mahimairaja.github.io/awesome-open-tts-under-1B/)**
+
 </div>
 
 Small open TTS models have crossed a line: several now stream in real time on a CPU, and the under-1B tier is where "runs on my machine" stops being a hope and starts being a spec. This list exists for one reader: a developer choosing a local TTS model for a real application (a LiveKit or Pipecat agent, an offline device, a self-hosted API) who needs the applied numbers, not a research survey.
@@ -127,6 +129,8 @@ PRs welcome. The bar:
 - Removals: models inactive over 12 months move to an Archive section via PR, with the reason noted.
 
 Open an issue first for anything ambiguous, especially boundary parameter counts.
+
+**This file is the only source.** The [filterable site](https://mahimairaja.github.io/awesome-open-tts-under-1B/) is generated from the tables above at build time, so a PR editing README.md is a complete contribution. Do not edit anything under `site/` to add or change a model. Every filter (size, licence class, CPU real-time, streaming, published latency) is derived from the cells you write, which is why the column vocabulary matters: write **not published** rather than leaving a cell blank, and lead the License cell with the licence on the *weights*. To check your edit parses before opening the PR: `cd site && npm install && npm run check`.
 
 ---
 

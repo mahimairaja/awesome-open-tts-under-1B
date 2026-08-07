@@ -1,0 +1,14 @@
+{
+  "name": "awesome-open-tts-under-1b-site",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "node scripts/check-readme.js"
+  },
+  "dependencies": {
+    "astro": "^5.13.5"
+  }
+}

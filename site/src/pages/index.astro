@@ -1,0 +1,413 @@
+---
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { parseReadme, parseIntro, cellHtml, SIZE_BUCKETS } from '../lib/parse-readme.js';
+import '../styles/global.css';
+
+// README.md is the single source of truth. Nothing about a model is authored
+// here; every row below is derived from the markdown tables at build time.
+const readmePath = fileURLToPath(new URL('../../../README.md', import.meta.url));
+const markdown = readFileSync(readmePath, 'utf8');
+const { models, warnings } = parseReadme(markdown);
+const intro = parseIntro(markdown);
+
+// Surface malformed contributions in the build log instead of dropping them.
+if (warnings.length) {
+  console.warn('\n[parse-readme] %d warning(s):', warnings.length);
+  for (const w of warnings) console.warn('  ! ' + w);
+  console.warn('');
+} else {
+  console.log(`[parse-readme] ${models.length} models parsed cleanly from README.md`);
+}
+
+const REPO = 'https://github.com/mahimairaja/awesome-open-tts-under-1B';
+
+const LICENSE_ORDER = [
+  ['permissive', 'Permissive'],
+  ['weak-copyleft', 'MPL'],
+  ['copyleft', 'Copyleft'],
+  ['copyleft-network', 'AGPL'],
+  ['use-restricted', 'Use-restricted'],
+  ['revenue-capped', 'Revenue-capped'],
+  ['noncommercial', 'Non-commercial'],
+  ['unstated', 'No grant'],
+];
+const CPU_ORDER = [
+  ['yes', 'Yes'],
+  ['borderline', 'Borderline'],
+  ['no', 'No'],
+  ['unknown', 'Not published'],
+];
+const STREAM_ORDER = [
+  ['dual', 'Dual'],
+  ['output', 'Output'],
+  ['sentence', 'Sentence'],
+  ['none', 'None'],
+  ['other', 'Other'],
+  ['unknown', 'Not published'],
+];
+
+const countBy = (key, val) =>
+  models.filter((m) => (key === 'license' ? m.license.class : m[key]) === val).length;
+
+const facets = [
+  {
+    id: 'table',
+    label: 'List',
+    options: [
+      { v: 'main', l: 'Shippable', n: models.filter((m) => m.table === 'main').length },
+      { v: 'restricted', l: 'Restricted', n: models.filter((m) => m.table === 'restricted').length },
+    ],
+  },
+  {
+    id: 'size',
+    label: 'Params',
+    options: SIZE_BUCKETS.map((b) => ({
+      v: b.id,
+      l: b.label,
+      n: models.filter((m) => m.sizeBucket === b.id).length,
+    })).filter((o) => o.n > 0),
+  },
+  {
+    id: 'license',
+    label: 'Licence',
+    options: LICENSE_ORDER.map(([v, l]) => ({ v, l, n: countBy('license', v) })).filter((o) => o.n > 0),
+  },
+  {
+    id: 'cpu',
+    label: 'CPU real-time',
+    options: CPU_ORDER.map(([v, l]) => ({ v, l, n: countBy('cpu', v) })).filter((o) => o.n > 0),
+  },
+  {
+    id: 'stream',
+    label: 'Streaming',
+    options: STREAM_ORDER.map(([v, l]) => ({ v, l, n: countBy('streaming', v) })).filter((o) => o.n > 0),
+  },
+];
+
+const ttfbCount = models.filter((m) => m.hasTtfb).length;
+
+function fmtParams(p) {
+  if (p.value === null) return { text: '—', unknown: true };
+  if (p.value >= 1e9) return { text: (p.value / 1e9).toFixed(2) + 'B', unknown: false };
+  const m = p.value / 1e6;
+  return { text: (m >= 100 ? Math.round(m) : m.toFixed(1)) + 'M', unknown: false };
+}
+
+/**
+ * Position on the size axis, log-scaled from 1M to 1B.
+ *
+ * Linear would be useless here: the list spans 4M to 1B, so on a linear axis
+ * every model under 100M collapses into the first tenth of the bar.
+ */
+function sizePct(value) {
+  if (value === null) return 0;
+  const pct = ((Math.log10(value) - 6) / 3) * 100;
+  return Math.max(2, Math.min(100, pct));
+}
+
+const title = 'awesome-open-tts-under-1b';
+const description =
+  'Every open-weight TTS model under 1B parameters, with the applied numbers you need to pick a local model for a voice agent. Filter by licence, size, CPU real-time and streaming.';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0b'/%3E%3Cg fill='%23ffb000'%3E%3Crect x='4' y='13' width='3' height='6'/%3E%3Crect x='10' y='8' width='3' height='16'/%3E%3Crect x='16' y='4' width='3' height='24'/%3E%3Crect x='22' y='10' width='3' height='12'/%3E%3C/g%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <div class="eyebrow">Awesome list · open weights · local inference</div>
+        <h1>
+          awesome-open-tts<span class="under">-under-1b</span>
+        </h1>
+        <p class="tagline">{intro.tagline}</p>
+        <p class="lede">{intro.lede}</p>
+
+        <div class="readout">
+          <div><b>{models.length}</b><span>Models</span></div>
+          <div><b>{models.filter((m) => m.table === 'main').length}</b><span>Shippable</span></div>
+          <div><b>{models.filter((m) => m.table === 'restricted').length}</b><span>Restricted</span></div>
+          <div><b>{models.filter((m) => m.cpu === 'yes').length}</b><span>CPU real-time</span></div>
+          <div><b>{ttfbCount}</b><span>Latency published</span></div>
+        </div>
+
+        <p class="source-note">
+          Every row is generated from <a href={`${REPO}/blob/main/README.md`}>README.md</a> at build
+          time. To add or correct a model, edit that one file: this site has no separate database.
+        </p>
+      </div>
+    </header>
+
+    <div class="filters">
+      <div class="wrap">
+        <div class="filter-top">
+          <div class="search">
+            <input
+              type="search"
+              id="q"
+              placeholder="Search name, language, licence, integration path…"
+              autocomplete="off"
+              aria-label="Search models"
+            />
+          </div>
+          <div class="count"><b id="shown">{models.length}</b> / {models.length}</div>
+          <button class="reset" id="reset" type="button">Reset</button>
+        </div>
+
+        <details class="facet-drawer" id="drawer" open>
+          <summary><span>Filters</span><span class="drawer-n" id="drawer-n"></span></summary>
+          <div class="facets">
+          {
+            facets.map((f) => (
+              <div class="facet" data-group={f.id}>
+                <label>{f.label}</label>
+                {f.options.map((o) => (
+                  <button class="chip" type="button" data-v={o.v} aria-pressed="false">{o.l}<span class="n">{o.n}</span></button>
+                ))}
+              </div>
+            ))
+          }
+          <div class="facet" data-group="ttfb">
+            <label>Signal</label>
+            <button class="chip" type="button" data-v="1" aria-pressed="false">Latency published<span class="n">{ttfbCount}</span></button>
+          </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <main>
+      <div class="wrap">
+        <div class="section-label" id="results-label">All models, by parameter count</div>
+
+        <div class="rows" id="rows">
+          {
+            models.map((m) => {
+              const p = fmtParams(m.params);
+              const pct = sizePct(m.params.value);
+              return (
+                <details
+                  class="row"
+                  data-table={m.table}
+                  data-size={m.sizeBucket}
+                  data-license={m.license.class}
+                  data-cpu={m.cpu}
+                  data-stream={m.streaming}
+                  data-ttfb={m.hasTtfb ? '1' : '0'}
+                  data-search={m.haystack}
+                >
+                  <summary>
+                    <div>
+                      <div class="m-name">{m.name}</div>
+                      {m.languages && m.languages !== 'not published' && (
+                        <div class="m-langs">{m.languages}</div>
+                      )}
+                    </div>
+
+                    <div class="m-params">
+                      <span class={p.unknown ? 'v unknown' : 'v'}>
+                        {!p.unknown && !m.params.exact && <span class="approx">~</span>}
+                        {p.text}
+                      </span>
+                      <div class="scale" title="Log scale, 1M to 1B">
+                        {m.params.value !== null && <i style={`width:${pct}%`} />}
+                      </div>
+                    </div>
+
+                    <div class="badges">
+                      <span class="badge" data-lic={m.license.class}>
+                        {m.license.label}{m.license.caveat ? ' *' : ''}
+                      </span>
+                      {m.cpu !== 'unknown' && (
+                        <span class={`badge cpu-${m.cpu}`}>CPU {m.cpu}</span>
+                      )}
+                      {m.streaming !== 'unknown' && m.streaming !== 'none' && (
+                        <span class="badge plain">{m.streaming} stream</span>
+                      )}
+                      {m.hasTtfb && <span class="badge ttfb">TTFB</span>}
+                      {m.gated && <span class="badge plain">gated</span>}
+                    </div>
+
+                    <span class="caret">▶</span>
+                  </summary>
+
+                  <div class="detail">
+                    <dl>
+                      {m.detail.map((d) => (
+                        <>
+                          <dt>{d.label}</dt>
+                          <dd set:html={cellHtml(d.raw)} />
+                        </>
+                      ))}
+                    </dl>
+                    <div class="actions">
+                      {m.url && <a href={m.url} target="_blank" rel="noopener noreferrer">Open model ↗</a>}
+                      <a href={`${REPO}/blob/main/README.md`} target="_blank" rel="noopener noreferrer">
+                        Correct this row
+                      </a>
+                    </div>
+                  </div>
+                </details>
+              );
+            })
+          }
+        </div>
+
+        <div class="empty" id="empty" hidden>
+          No model matches those filters. Loosen one, or
+          <a href={`${REPO}/issues/new`}>open an issue</a> if something is missing.
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap cols">
+        <div>
+          <h3>Reading the numbers</h3>
+          <p>
+            Latency figures are not comparable across rows unless the hardware matches. A cell
+            reading "not published" means no defensible source exists, not that the model is slow.
+          </p>
+          <p>
+            A licence badge marked <strong>*</strong> has a caveat in the full cell: a restrictive
+            dependency, a code-versus-weights split, or a contradicted claim. Expand the row.
+          </p>
+        </div>
+        <div>
+          <h3>Contributing</h3>
+          <p>
+            Edit <a href={`${REPO}/blob/main/README.md`}>README.md</a> and open a PR. The site
+            rebuilds from it. Licence corrections are the highest-priority change.
+          </p>
+        </div>
+        <div>
+          <h3>Source</h3>
+          <p><a href={REPO}>github.com/mahimairaja/awesome-open-tts-under-1B</a></p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const rows = [...document.querySelectorAll('.row')];
+      const q = document.getElementById('q');
+      const shown = document.getElementById('shown');
+      const empty = document.getElementById('empty');
+      const label = document.getElementById('results-label');
+      const drawer = document.getElementById('drawer');
+      const drawerN = document.getElementById('drawer-n');
+
+      // Markup ships the drawer open so it works without JS and on desktop,
+      // where its summary is hidden. Collapse it only on narrow viewports.
+      if (matchMedia('(max-width: 760px)').matches) drawer.open = false;
+
+      // group id -> Set of active values. Empty set means "no filter on this group".
+      const active = new Map();
+      document.querySelectorAll('.facet').forEach((f) => active.set(f.dataset.group, new Set()));
+
+      const attrFor = { table: 'table', size: 'size', license: 'license', cpu: 'cpu', stream: 'stream', ttfb: 'ttfb' };
+
+      function apply() {
+        const term = q.value.trim().toLowerCase();
+        let n = 0;
+
+        for (const row of rows) {
+          let ok = true;
+
+          for (const [group, values] of active) {
+            if (values.size === 0) continue;
+            if (!values.has(row.dataset[attrFor[group]])) { ok = false; break; }
+          }
+
+          if (ok && term) ok = row.dataset.search.includes(term);
+
+          row.hidden = !ok;
+          if (!ok) row.open = false;
+          if (ok) n++;
+        }
+
+        shown.textContent = String(n);
+        empty.hidden = n !== 0;
+
+        const chosen = [...active.values()].reduce((a, s) => a + s.size, 0);
+        drawerN.textContent = chosen ? String(chosen) : '';
+
+        const filtering = term || [...active.values()].some((s) => s.size);
+        label.textContent = filtering
+          ? `${n} matching model${n === 1 ? '' : 's'}, by parameter count`
+          : 'All models, by parameter count';
+
+        syncUrl(term);
+      }
+
+      // Filter state lives in the URL so a filtered view is shareable.
+      function syncUrl(term) {
+        const p = new URLSearchParams();
+        for (const [group, values] of active) if (values.size) p.set(group, [...values].join(','));
+        if (term) p.set('q', term);
+        const s = p.toString();
+        history.replaceState(null, '', s ? `?${s}` : location.pathname);
+      }
+
+      function restoreFromUrl() {
+        const p = new URLSearchParams(location.search);
+        for (const [group, values] of active) {
+          const raw = p.get(group);
+          if (!raw) continue;
+          raw.split(',').forEach((v) => values.add(v));
+        }
+        if (p.get('q')) q.value = p.get('q');
+        document.querySelectorAll('.chip').forEach((c) => {
+          const group = c.closest('.facet').dataset.group;
+          c.setAttribute('aria-pressed', String(active.get(group).has(c.dataset.v)));
+        });
+      }
+
+      document.querySelectorAll('.chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const group = chip.closest('.facet').dataset.group;
+          const set = active.get(group);
+          const v = chip.dataset.v;
+          if (set.has(v)) set.delete(v);
+          else set.add(v);
+          chip.setAttribute('aria-pressed', String(set.has(v)));
+          apply();
+        });
+      });
+
+      let t;
+      q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(apply, 90); });
+
+      document.getElementById('reset').addEventListener('click', () => {
+        active.forEach((s) => s.clear());
+        document.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+        q.value = '';
+        apply();
+      });
+
+      // "/" focuses search, Escape clears it.
+      addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+        if (e.key === 'Escape' && document.activeElement === q) { q.value = ''; q.blur(); apply(); }
+      });
+
+      restoreFromUrl();
+      apply();
+    </script>
+  </body>
+</html>
