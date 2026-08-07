@@ -7,7 +7,7 @@ Astro build for the filterable view of `../README.md`.
 ```bash
 npm install
 npm run check    # does ../README.md still parse cleanly?
-npm run dev      # http://localhost:4321/awesome-open-tts-under-1B/
+npm run dev      # http://localhost:4321/
 npm run build
 ```
 

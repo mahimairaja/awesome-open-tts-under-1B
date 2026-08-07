@@ -8,7 +8,7 @@
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](#contributing)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-**[Browse and filter the list →](https://mahimairaja.github.io/awesome-open-tts-under-1B/)**
+**[Browse and filter the list →](https://1btts.voicegateway.dev/)**
 
 </div>
 
@@ -130,7 +130,7 @@ PRs welcome. The bar:
 
 Open an issue first for anything ambiguous, especially boundary parameter counts.
 
-**This file is the only source.** The [filterable site](https://mahimairaja.github.io/awesome-open-tts-under-1B/) is generated from the tables above at build time, so a PR editing README.md is a complete contribution. Do not edit anything under `site/` to add or change a model. Every filter (size, licence class, CPU real-time, streaming, published latency) is derived from the cells you write, which is why the column vocabulary matters: write **not published** rather than leaving a cell blank, and lead the License cell with the licence on the *weights*. To check your edit parses before opening the PR: `cd site && npm install && npm run check`.
+**This file is the only source.** The [filterable site](https://1btts.voicegateway.dev/) is generated from the tables above at build time, so a PR editing README.md is a complete contribution. Do not edit anything under `site/` to add or change a model. Every filter (size, licence class, CPU real-time, streaming, published latency) is derived from the cells you write, which is why the column vocabulary matters: write **not published** rather than leaving a cell blank, and lead the License cell with the licence on the *weights*. To check your edit parses before opening the PR: `cd site && npm install && npm run check`.
 
 ---
 

@@ -52,10 +52,14 @@ function findTables(markdown) {
   return tables;
 }
 
-/** `[label](url)` -> { label, url }. Returns the raw text when there is no link. */
+/**
+ * `[label](url)` -> { label, url }. Returns the raw text when there is no link.
+ * The url is scheme-checked and is null when unsafe, so callers render the name
+ * without a link rather than emitting an untrusted href.
+ */
 function parseLink(cell) {
   const m = cell.match(/\[([^\]]+)\]\(([^)]+)\)/);
-  if (m) return { label: m[1], url: m[2] };
+  if (m) return { label: m[1], url: safeUrl(m[2]) };
   return { label: stripMarkdown(cell), url: null };
 }
 
@@ -68,17 +72,54 @@ export function stripMarkdown(s) {
     .trim();
 }
 
-/** Render a cell's markdown as safe HTML: links stay clickable, bold stays bold. */
-export function cellHtml(s) {
-  const esc = s
+function escapeHtml(s) {
+  return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return esc
-    .replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-    )
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Scheme allowlist for link targets.
+ *
+ * This list takes community PRs, so a markdown link is untrusted input: a
+ * contributor must not be able to land `[label](javascript:...)` and have it
+ * execute for every visitor once merged. Anything not plainly http(s), mailto,
+ * an anchor, or a relative path is refused. Protocol-relative `//host` is
+ * refused too, so a link cannot silently point off-site.
+ *
+ * Returns null when the URL is not safe to emit, and callers render the label
+ * as plain text instead of dropping the content.
+ */
+const SAFE_URL = /^(?:https?:\/\/|mailto:|#|\/(?!\/)|\.{1,2}\/)/i;
+
+export function safeUrl(url) {
+  if (typeof url !== 'string') return null;
+  // Control characters and whitespace can smuggle a scheme past a naive check
+  // (browsers strip them from URLs), so refuse them outright.
+  const u = url.trim();
+  if (!u || /[\u0000-\u0020\u007f]/.test(u)) return null;
+  return SAFE_URL.test(u) ? u : null;
+}
+
+/**
+ * Render a cell's markdown as safe HTML: links stay clickable, bold stays bold.
+ *
+ * Escaping happens first and the supported inline markup is re-introduced after,
+ * so the only tags in the output are the ones produced here. Link targets are
+ * additionally scheme-checked; escaping alone stops attribute breakout but not
+ * a `javascript:` URI.
+ */
+export function cellHtml(s) {
+  return escapeHtml(s)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+      const safe = safeUrl(url);
+      return safe
+        ? `<a href="${safe}" target="_blank" rel="noopener noreferrer">${label}</a>`
+        : label;
+    })
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
